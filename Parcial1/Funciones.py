@@ -9,6 +9,10 @@ import random
 def alfabeto(cadena):
     return sorted(set(cadena))
 
+def imprimirmatriz(matriz):
+    for fila in matriz:
+        print(fila)
+
 # Unidad 2: ejercicio 1
 def informacion(probabilidades, r=2):
     '''
@@ -339,4 +343,20 @@ def generaMensaje(N, palabras_codigo, probabilidades) -> list:
     return random.choices(palabras_codigo, weights=probabilidades, k=N)
 
 if __name__ == "__main__":
+    mensaje = ";;,;,;:,,,.;,,.,,,::,;;;,:;.,,;:,,,:..;,;;.,;,,.:;"
+    alf, prob = alfabeto_y_probabilidades(mensaje)
+    matriz = matrizTransicion(mensaje)
+    imprimirmatriz(matriz)
+    esNula = esMemoriaNula(matriz)
+    print (alf, prob)
+    print ("ees nula: ", esNula)
+    h = entropia(prob)
+    print(h)
+    ext, probs = extension(alf, prob, 2)
+    print(ext, probs)
+    h_ext = entropia(probs)
+    print(h_ext)
+    
+
+
     print()
