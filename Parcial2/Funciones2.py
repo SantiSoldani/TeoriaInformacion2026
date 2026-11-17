@@ -997,11 +997,13 @@ def capacidad_canal_sin_ruido(matriz: list[list[float]]) -> float:
 
 
 def es_simetrico(matriz: list[list[float]]) -> bool:
-    """Un canal es simétrico si es uniforme y todas las columnas son permutaciones entre sí."""
-    if not es_uniforme(matriz):
-        return False
+    """Un canal es simétrico si todas las filas son permutaciones entre sí y todas las columnas son permutaciones entre sí."""
     filas = len(matriz)
     cols = len(matriz[0])
+    primera_fila = sorted(matriz[0])
+    for f in matriz[1:]:
+        if sorted(f) != primera_fila:
+            return False
     primera_col = sorted([matriz[i][0] for i in range(filas)])
     for j in range(1, cols):
         col_j = sorted([matriz[i][j] for i in range(filas)])
@@ -1040,23 +1042,18 @@ def maximizar_informacion_mutua(canal: list[list[float]], h: float = 0.001) -> t
 def capacidad_canal(matriz: list[list[float]], paso_h: float = 0.001) -> float:
     """
     Calcula la capacidad del canal C = max_P(X) I(A, B):
-      - Independiente: C = 0 bits
       - Determinante:  C = log2(columnas)
       - Sin ruido:     C = log2(filas)
-      - Uniforme:      C = log2(columnas) - H(fila)
-      - Binario general (no uniforme): Se calcula maximizando la información mutua
-        con barrido de paso h.
+      - Simétrico:     C = log2(columnas) - H(fila)
+      - Binario general: Se calcula maximizando la información mutua con barrido de paso h.
     """
-    if es_independiente(matriz):
-        return 0.0
-
     if es_canal_determinante(matriz):
         return capacidad_canal_determinante(matriz)
 
     if es_canal_sin_ruido(matriz):
         return capacidad_canal_sin_ruido(matriz)
 
-    if es_uniforme(matriz):
+    if es_simetrico(matriz):
         columnas = len(matriz[0])
         return round(math.log2(columnas) - entropia(matriz[0]), 4)
 
@@ -1065,7 +1062,8 @@ def capacidad_canal(matriz: list[list[float]], paso_h: float = 0.001) -> float:
         _, c_opt = maximizar_informacion_mutua(matriz, paso_h)
         return c_opt
 
-    raise ValueError("El canal no es determinante, ni sin ruido, ni uniforme, ni binario.")
+    raise ValueError("El canal no es determinante, ni sin ruido, ni simétrico, ni binario.")
+
 
 
 def clasificar_canal(matriz: list[list[float]], imprimir: bool = True) -> dict:
