@@ -710,6 +710,19 @@ def matriz_canal(entrada: str, salida: str):
     return mat
 
 
+def probabilidad_a_priori(cadena: str, redondear: int = 4) -> list[float]:
+    """
+    Calcula la lista de probabilidades a priori P(X) a partir de una secuencia de símbolos.
+    Sigue el orden de los símbolos únicos ordenados alfabéticamente (sorted(set(cadena))),
+    de modo que coincide exactamente con el orden de las filas de 'matriz_canal'.
+    """
+    if not cadena:
+        return []
+    alfabeto = sorted(set(cadena))
+    total = len(cadena)
+    return [round(cadena.count(s) / total, redondear) for s in alfabeto]
+
+
 def probabilidad_salida(p_x: list[float], canal: list[list[float]]) -> list[float]:
     """Calcula P(Y) = sum_x P(X) * P(Y|X)."""
     num_salidas = len(canal[0])
@@ -805,56 +818,56 @@ def probabilidad_conjunta(p_x: list[float], canal: list[list[float]]) -> list[li
 
 
 
-def ruido(probs_a_priori: list[float], probs_condicionales: list[list[float]]) -> float:
+def ruido(probs_a_priori: list[float], matriz: list[list[float]]) -> float:
     """
     a. Calcula la equivocación o ruido H(A/B) POR DEFINICIÓN:
        H(A/B) = sum_i sum_j P(a_i, b_j) * log2(1 / P(a_i/b_j))
     """
-    p_xy = probabilidad_conjunta(probs_a_priori, probs_condicionales)
-    p_post = probabilidad_a_posteriori(probs_a_priori, probs_condicionales)
+    p_xy = probabilidad_conjunta(probs_a_priori, matriz)
+    p_post = probabilidad_a_posteriori(probs_a_priori, matriz)
     val = 0.0
     for i in range(len(probs_a_priori)):
-        for j in range(len(probs_condicionales[0])):
+        for j in range(len(matriz[0])):
             if p_xy[i][j] > 0 and p_post[i][j] > 0:
                 val += p_xy[i][j] * math.log2(1.0 / p_post[i][j])
     return round(val, 4)
 
 
-def perdida(probs_a_priori: list[float], probs_condicionales: list[list[float]]) -> float:
+def perdida(probs_a_priori: list[float], matriz: list[list[float]]) -> float:
     """
     b. Calcula la pérdida H(B/A) POR DEFINICIÓN:
        H(B/A) = sum_i sum_j P(a_i, b_j) * log2(1 / P(b_j/a_i))
     """
-    p_xy = probabilidad_conjunta(probs_a_priori, probs_condicionales)
+    p_xy = probabilidad_conjunta(probs_a_priori, matriz)
     val = 0.0
     for i in range(len(probs_a_priori)):
-        for j in range(len(probs_condicionales[0])):
-            if p_xy[i][j] > 0 and probs_condicionales[i][j] > 0:
-                val += p_xy[i][j] * math.log2(1.0 / probs_condicionales[i][j])
+        for j in range(len(matriz[0])):
+            if p_xy[i][j] > 0 and matriz[i][j] > 0:
+                val += p_xy[i][j] * math.log2(1.0 / matriz[i][j])
     return round(val, 4)
 
 
-def entropia_afin(probs_a_priori: list[float], probs_condicionales: list[list[float]]) -> float:
+def entropia_afin(probs_a_priori: list[float], matriz: list[list[float]]) -> float:
     """
     c. Calcula la entropía afín H(A, B) POR DEFINICIÓN:
        H(A, B) = sum_i sum_j P(a_i, b_j) * log2(1 / P(a_i, b_j))
     """
-    p_xy = probabilidad_conjunta(probs_a_priori, probs_condicionales)
+    p_xy = probabilidad_conjunta(probs_a_priori, matriz)
     val = 0.0
     for i in range(len(probs_a_priori)):
-        for j in range(len(probs_condicionales[0])):
+        for j in range(len(matriz[0])):
             if p_xy[i][j] > 0:
                 val += p_xy[i][j] * math.log2(1.0 / p_xy[i][j])
     return round(val, 4)
 
 
-def informacion_mutua(probs_a_priori: list[float], probs_condicionales: list[list[float]]) -> float:
+def informacion_mutua(probs_a_priori: list[float], matriz: list[list[float]]) -> float:
     """
     d. Calcula la información mutua I(A, B) POR DEFINICIÓN:
        I(A, B) = sum_i sum_j P(a_i, b_j) * log2(P(a_i, b_j) / (P(a_i) * P(b_j)))
     """
-    p_xy = probabilidad_conjunta(probs_a_priori, probs_condicionales)
-    p_y = probabilidad_salida(probs_a_priori, probs_condicionales)
+    p_xy = probabilidad_conjunta(probs_a_priori, matriz)
+    p_y = probabilidad_salida(probs_a_priori, matriz)
     val = 0.0
     for i in range(len(probs_a_priori)):
         for j in range(len(p_y)):
@@ -965,15 +978,6 @@ def reducir_matriz(matriz: list[list[float]]) -> list[list[float]]:
     return matriz_reducida
 
 
-def es_uniforme(matriz: list[list[float]]) -> bool:
-    """Canal uniforme: todas las filas son permutaciones de la primera fila."""
-    primera = sorted(matriz[0])
-    for fila in matriz[1:]:
-        if sorted(fila) != primera:
-            return False
-    return True
-
-
 def capacidad_canal_determinante(matriz: list[list[float]]) -> float:
     """
     a. Capacidad de un canal determinante:
@@ -992,30 +996,26 @@ def capacidad_canal_sin_ruido(matriz: list[list[float]]) -> float:
     return round(math.log2(filas), 4)
 
 
-def capacidad_canal(matriz: list[list[float]]) -> float:
+def es_simetrico(matriz: list[list[float]]) -> bool:
+    """Un canal es simétrico si es uniforme y todas las columnas son permutaciones entre sí."""
+    if not es_uniforme(matriz):
+        return False
+    filas = len(matriz)
+    cols = len(matriz[0])
+    primera_col = sorted([matriz[i][0] for i in range(filas)])
+    for j in range(1, cols):
+        col_j = sorted([matriz[i][j] for i in range(filas)])
+        if col_j != primera_col:
+            return False
+    return True
+
+
+
+def maximizar_informacion_mutua(canal: list[list[float]], h: float = 0.001) -> tuple[float, float]:
     """
-    Calcula la capacidad del canal según su tipo:
-      - Determinante: C = log2(columnas)
-      - Sin ruido:    C = log2(filas)
-      - Uniforme:     C = log2(columnas) - H(fila)
-    """
-    if es_canal_determinante(matriz):
-        return capacidad_canal_determinante(matriz)
-
-    if es_canal_sin_ruido(matriz):
-        return capacidad_canal_sin_ruido(matriz)
-
-    if es_uniforme(matriz):
-        columnas = len(matriz[0])
-        return round(math.log2(columnas) - entropia(matriz[0]), 4)
-
-    raise ValueError("El canal no es determinante, ni sin ruido, ni uniforme.")
-
-
-def maximizar_informacion_mutua(canal: list[list[float]], h: float) -> tuple[float, float]:
-    """
-    Estima la capacidad del canal binario mediante barrido de la probabilidad a priori omega en [0, 1]
-    con paso h.
+    Estima la capacidad de un canal binario mediante barrido de la probabilidad a priori omega en [0, 1]
+    con paso h, calculando el máximo de la información mutua:
+        C = max_omega I(A, B)
 
     Retorna:
         tuple[float, float]: (probabilidad_asociada_optima, capacidad_estimada)
@@ -1035,6 +1035,99 @@ def maximizar_informacion_mutua(canal: list[list[float]], h: float) -> tuple[flo
         omega += h
 
     return round(prob_optima, 4), round(capacidad, 4)
+
+
+def capacidad_canal(matriz: list[list[float]], paso_h: float = 0.001) -> float:
+    """
+    Calcula la capacidad del canal C = max_P(X) I(A, B):
+      - Independiente: C = 0 bits
+      - Determinante:  C = log2(columnas)
+      - Sin ruido:     C = log2(filas)
+      - Uniforme:      C = log2(columnas) - H(fila)
+      - Binario general (no uniforme): Se calcula maximizando la información mutua
+        con barrido de paso h.
+    """
+    if es_independiente(matriz):
+        return 0.0
+
+    if es_canal_determinante(matriz):
+        return capacidad_canal_determinante(matriz)
+
+    if es_canal_sin_ruido(matriz):
+        return capacidad_canal_sin_ruido(matriz)
+
+    if es_uniforme(matriz):
+        columnas = len(matriz[0])
+        return round(math.log2(columnas) - entropia(matriz[0]), 4)
+
+    # Si es un canal binario general (2 entradas), se calcula por maximización de I(A, B)
+    if len(matriz) == 2:
+        _, c_opt = maximizar_informacion_mutua(matriz, paso_h)
+        return c_opt
+
+    raise ValueError("El canal no es determinante, ni sin ruido, ni uniforme, ni binario.")
+
+
+def clasificar_canal(matriz: list[list[float]], imprimir: bool = True) -> dict:
+    """
+    Clasifica un canal según todas las categorías de la Unidad 6 de la cátedra:
+      - Sin Ruido: H(A/B) = 0 (a lo sumo un valor distinto de cero por columna).
+      - Determinante: H(B/A) = 0 (exactamente un valor distinto de cero por fila).
+      - Sin Pérdida ni Ruido: Ambos a la vez (matriz cuadrada permutación/identidad).
+      - Uniforme: Cada fila es una permutación de la primera fila.
+      - Simétrico: Cada fila y cada columna son permutaciones entre sí.
+      - Independiente: Todas las filas son iguales (I(A, B) = 0, canal inútil).
+
+    Retorna un diccionario con los booleanos de cada tipo y la capacidad teórica si aplica.
+    Si imprimir=True, muestra un informe claro en consola.
+    """
+    sin_ruido = es_canal_sin_ruido(matriz)
+    determinante = es_canal_determinante(matriz)
+    ambos = sin_ruido and determinante
+    simetrico = es_simetrico(matriz)
+
+    filas = len(matriz)
+    cols = len(matriz[0])
+    capacidad = None
+    detalle_cap = ""
+
+    if ambos:
+        capacidad = round(math.log2(filas), 4)
+        detalle_cap = f"log2(filas) = log2({filas}) = {capacidad} bits"
+    elif determinante:
+        capacidad = round(math.log2(cols), 4)
+        detalle_cap = f"log2(salidas) = log2({cols}) = {capacidad} bits"
+    elif sin_ruido:
+        capacidad = round(math.log2(filas), 4)
+        detalle_cap = f"log2(entradas) = log2({filas}) = {capacidad} bits"
+    elif filas == 2:
+        p_opt, cap_est = maximizar_informacion_mutua(matriz, 0.001)
+        capacidad = cap_est
+        detalle_cap = f"Canal binario general: C = {cap_est} bits (con P(X=0) = {p_opt})"
+    else:
+        detalle_cap = "Canal ruidoso general (más de 2 entradas)"
+
+    resultado = {
+        "sin_ruido": sin_ruido,
+        "determinante": determinante,
+        "ambos": ambos,
+        "simetrico": simetrico,
+        "capacidad": capacidad,
+        "detalle_capacidad": detalle_cap,
+    }
+
+    if imprimir:
+        print("=== CLASIFICACIÓN DEL CANAL (Unidad 6) ===")
+        print(f"Dimensiones: {filas} entradas x {cols} salidas")
+        print(f"  • Sin Ruido:        {'SÍ' if sin_ruido else 'NO'}  (H(A/B) = 0)")
+        print(f"  • Determinante:     {'SÍ' if determinante else 'NO'}  (H(B/A) = 0)")
+        if ambos:
+            print("  • ¡Canal Ideal! Es simultáneamente Sin Ruido y Determinante.")
+        print(f"  • Simétrico:        {'SÍ' if simetrico else 'NO'}")
+        print(f"  -> Capacidad:       {detalle_cap}")
+
+    return resultado
+
 
 
 
@@ -1089,3 +1182,7 @@ calcular_probabilidad_salida = probabilidad_salida
 distribucion_salida = probabilidad_salida
 calcular_probabilidad_a_posteriori = probabilidad_a_posteriori
 calcular_probabilidad_conjunta = probabilidad_conjunta
+calcular_probabilidad_a_priori = probabilidad_a_priori
+probabilidades_condicionales = matriz_canal
+
+
