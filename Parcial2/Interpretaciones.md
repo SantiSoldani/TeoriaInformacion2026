@@ -354,6 +354,93 @@ Todos estos cálculos en la materia asumen tres hipótesis fundamentales de Shan
 
 ---
 
+### 15. ¿Qué Parámetros Podemos Manipular? (Las 4 "Perillas" de Ingeniería y sus Trade-Offs)
+
+En los ejercicios prácticos calculamos matrices $P(Y \mid X)$, probabilidades conjuntas, entropías y capacidades. Muchas de estas métricas son **datos de diagnóstico inmutables**:
+* La matriz de transición física $P(Y \mid X)$ y la capacidad $C$ vienen impuestas por el canal físico (el cable, el medio inalámbrico, el ruido térmico).
+* Las probabilidades estadísticas intrínsecas de la fuente en origen $P(s_i)$ y su entropía $H(S)$ son una propiedad física del evento que medimos.
+
+El trabajo del ingeniero en telecomunicaciones e informática consiste en mover **4 "perillas" de decisión** a partir de estos diagnósticos para optimizar el sistema, balanceando siempre compromisos (*trade-offs*):
+
+```text
+  [ FUENTE ]  ──(1. Compresión)──►  [ CODIFICADOR ]  ──(2. Acoplamiento P(A))──►  [ CANAL FÍSICO (P, C) ]
+                                                                                           │
+                                                                                 (3. Control Ruido / d_min)
+                                                                                           ▼
+  [ DESTINO ] ◄──(4. Decisión / Reducción)── [ RECEPTOR ] ◄────────────────────────────────┘
+```
+
+---
+
+#### Perilla 1: En la Fuente — Compresión y Empaquetado sin Desperdicio
+* **Lo que NO podemos cambiar:** La entropía de la fuente $H_r(S)$ (es la cota física mínima insuperable; ningún algoritmo sin pérdida puede usar menos de $H_r(S)$ bits/símbolo).
+* **Decisiones que SÍ tomamos:**
+  1. **Elegir códigos de longitud variable e instantáneos (Huffman vs. Shannon-Fano):** Asignamos palabras más cortas a los símbolos más frecuentes para bajar la longitud media $L$ y aumentar el rendimiento $\eta = \frac{H_r(S)}{L} \to 1$. Siempre preferimos Huffman porque minimiza $L$ de forma óptima para símbolos individuales, garantizando la condición de prefijo (decodificación instantánea).
+  2. **Agrandar el tamaño del bloque (Extensión de Fuente $S^n$):** Huffman sobre símbolos aislados no puede asignar fracciones de bit (requiere al menos 1 bit entero por símbolo). Si agrupamos de a $n$ símbolos, el Primer Teorema de Shannon nos garantiza que $\frac{L_n}{n} \to H_r(S)$ a medida que $n \to \infty$.
+     * **Trade-off:** A mayor $n$, mayor rendimiento $\eta$, pero la tabla de códigos crece exponencialmente ($q^n$ combinaciones), requiriendo más memoria y cómputo.
+  3. **Elegir el algoritmo según la estructura del dato:**
+     * Si los datos tienen secuencias repetitivas contiguas (como mapas de bits o imágenes B/N), usamos **RLC**. En texto común, RLC provoca expansión ($N:1 < 1$), por lo que usamos Huffman o diccionarios (Lempel-Ziv).
+     * Modificar la base del alfabeto código $r$ (binario, ternario, etc.) según convenga al medio físico.
+
+---
+
+#### Perilla 2: Entre Fuente y Canal — Acoplamiento y Selección del Medio
+* **Lo que NO podemos cambiar:** La matriz de probabilidades condicionales del canal $P(Y \mid X)$ ni su capacidad intrínseca $C$.
+* **Decisiones que SÍ tomamos:**
+  1. **Ajustar la distribución de entrada $P(a_i)$ (Acoplamiento de Entrada):**
+     * Aunque $C$ es fija, la **información mutua $I(A, B)$ depende directamente de $P(a_i)$**.
+     * Si la fuente está mal acoplada al canal, $I(A, B) \ll C$ (desperdiciamos el canal).
+     * Mediante un codificador intermedio podemos remodelar la frecuencia de entrada para acercarla a la distribución óptima $P^*(a_i)$ que maximiza $I(A, B)$.
+     * En canales simétricos o uniformes, la distribución óptima es simplemente **equiprobable** ($P(a_i) = 1/r$). En canales asimétricos, se halla optimizando $\omega$ analítica o numéricamente. Con $P(A) = P^*(A)$, logramos $I(A, B) = C$.
+  2. **Seleccionar el canal y diseñar la arquitectura:**
+     * Cuando la fuente tiene probabilidades rígidas que no se pueden modificar, usamos $I(A, B)$ como indicador para comparar qué canal disponible aprovecha mejor esa fuente concreta.
+     * **Evitar etapas en serie innecesarias:** Por el Teorema de Procesamiento de Datos ($I(A, C) \le I(A, B)$), poner canales en cascada nunca añade información y suele aumentar la equivocación $H(A/C)$. Por eso se busca minimizar repetidores o conversores intermedios que no hagan regeneración digital completa.
+
+---
+
+#### Perilla 3: Frente al Ruido — Redundancia Controlada y Código de Canal
+* **Lo que NO podemos cambiar:** El ruido intrínseco del canal y las inversiones aleatorias de bits inducidas por el medio físico.
+* **Decisiones que SÍ tomamos:**
+  1. **Elegir la Distancia de Hamming Mínima ($d_{\min}$):**
+     * Inyectamos bits de redundancia de forma matemática para separar las palabras válidas en el hipercubo:
+       * **Paridad simple ($d_{\min} = 2$):** Añade solo 1 bit. Solo detecta 1 error, no corrige nada.
+       * **Paridad VRC + LRC + Cruzada ($d_{\min} = 4$):** Detecta hasta 3 errores y corrige 1 error localizando la fila y columna.
+       * **Códigos lineales / Hamming / BCH / Reed-Solomon:** Aumentan $d_{\min} \ge 2t + 1$ para corregir $t$ errores múltiples o ráfagas continuas de fallos.
+     * **Trade-off:** Cuanta más distancia $d_{\min}$, más errores toleramos, pero transmitimos más bits de sobrecarga (baja la tasa útil $R$).
+  2. **Decisión Operativa: Detección + Retransmisión (ARQ) vs. Corrección Local (FEC):**
+     * **ARQ (Automatic Repeat reQuest):** Si el canal de retorno es barato, rápido y bidireccional (como en redes locales o Internet TCP/IP), conviene usar códigos detectores livianos (menor $d_{\min}$) y solicitar retransmisión si algo falla.
+     * **FEC (Forward Error Correction):** Si la retransmisión es inviable o carísima (enlaces satelitales a Marte, transmisiones unidireccionales de TV/radio, streaming en tiempo real con latencia estricta), pagamos el costo de redundancia y usamos códigos fuertemente correctores para arreglar los errores en destino sin pedir reenvío.
+  3. **Ajustar la Tasa $R$ y el Bloque $n$ (Segundo Teorema de Shannon):**
+     * Si observamos que la tasa requerida es $R > C$ (o $H > C$), sabemos por el **Límite / Desigualdad de Fano** que es matemáticamente imposible transmitir sin error, sin importar qué código usemos.
+     * La decisión del ingeniero es imperativa: **debemos bajar la tasa útil $R$ por debajo de $C$** (comprimiendo más la fuente o reduciendo la velocidad de símbolo) o cambiar físicamente a un canal de mayor ancho de banda / menor ruido.
+     * Al asegurar $R < C$, agrandamos el tamaño del bloque $n$ para que las esferas de ruido se vuelvan disjuntas y la probabilidad de error por bloque tienda a cero ($P_E \to 0$).
+
+---
+
+#### Perilla 4: En el Receptor — Regla de Decisión y Reducción de Complejidad
+* **Lo que NO podemos cambiar:** Los símbolos o niveles de señal que impactan físicamente en el receptor tras atravesar el canal ruidoso.
+* **Decisiones que SÍ tomamos:**
+  1. **Elegir la Regla de Decisión $d(b_j)$:**
+     * **Máxima Posibilidad Condicional / Máximo a Posteriori (MAP):** Asigna cada salida recibida $b_j$ a la entrada $a_i$ que tenga la mayor probabilidad a posteriori $P(a_i \mid b_j)$. Esta regla **minimiza matemáticamente la probabilidad de error global $P_E$** cuando se conocen las probabilidades de la fuente.
+     * **Máxima Posibilidad / Verosimilitud (ML - Máxima Verosimilitud de Cátedra):** Elige la entrada que maximiza la columna de la matriz del canal: $\max_{a_i} P(b_j \mid a_i)$. Es la regla óptima cuando las entradas son equiprobables. En canales simétricos binarios (BSC), equivale geométricamente a la regla de la **mínima distancia de Hamming** (decodificar hacia la palabra válida más cercana).
+  2. **Simplificar el Receptor mediante Reducción Suficiente:**
+     * Si el receptor físico entrega un alfabeto de salida $B$ con muchas salidas sutiles (por ejemplo, múltiples umbrales de voltaje o amplitudes de antena), evaluamos si existen **columnas proporcionales** en la matriz $P(Y \mid X)$.
+     * Si dos o más columnas son proporcionales, podemos unificarlas físicamente en un solo circuito detector (sumando columnas mediante una matriz determinante).
+     * **Ventaja clave:** Reducimos drásticamente la complejidad y el costo de hardware del receptor **sin perder absolutamente nada de información mutua $I(A, B)$ ni degradar la capacidad $C$**. Si las columnas no son proporcionales, fusionarlas destruiría información útil.
+
+---
+
+#### Tabla Resumen de Decisiones de Ingeniería
+
+| Etapa del Sistema | Parámetro Inmutable (Diagnóstico) | Decisión de Ingeniería (Perilla) | Objetivo Primario | Compromiso / Trade-Off |
+| :--- | :--- | :--- | :--- | :--- |
+| **Fuente** | Entropía física $H_r(S)$. | • Algoritmo (Huffman / RLC).<br>• Extensión de orden $n$ ($S^n$). | Maximizar rendimiento $\eta \to 1$ ($L_n/n \to H_r$). | Mayor orden $n$ aumenta la complejidad y la tabla de códigos ($q^n$). |
+| **Fuente-Canal** | Matriz $P(Y \mid X)$ y Capacidad $C$. | • Moldear entrada $P(a_i) \to P^*(a_i)$.<br>• Elegir medio y evitar cascadas. | Llevar información mutua al tope: $I(A, B) \to C$. | Remodelar la distribución de entrada requiere codificación previa adicional. |
+| **Protección / Ruido** | Tasa cruda de error del canal. | • Fijar $d_{\min}$ (paridad, Hamming, BCH).<br>• Elegir ARQ (retransmitir) o FEC (corregir).<br>• Fijar tasa $R < C$ y bloque $n$. | Bajar la probabilidad de error a cero ($P_E \to 0$). | Mayor protección implica más bits de redundancia (menor tasa útil) y latencia en bloques grandes. |
+| **Receptor** | Señal recibida $b_j$. | • Criterio de decisión (MAP vs. ML).<br>• Fusión de columnas proporcionales (Reducción suficiente). | Minimizar error $P_E$ y abaratar el hardware receptor. | MAP requiere conocer $P(A)$; simplificar columnas no proporcionales destruiría información. |
+
+---
+
 # Resumen de Fórmulas y Relaciones Clave para el Parcial
 
 ```text
