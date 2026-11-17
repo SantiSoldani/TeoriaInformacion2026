@@ -236,6 +236,124 @@ Esta guía reúne de manera sintética qué significa cada concepto, qué rescat
 
 ---
 
+### 13. El Segundo Teorema de Shannon: Intuición, Paradoja y Geometría en Altas Dimensiones
+
+* **Enunciado fundamental:**
+  > *«Dada una fuente con tasa de transmisión $R$ y un canal ruidoso con capacidad $C$:*
+  > * *Si $R \le C$: Siempre existe un código que permite transmitir por el canal ruidoso y recuperar el mensaje original con probabilidad de error arbitrariamente pequeña ($P_E \to 0$), agrupando en bloques de $n$ símbolos suficientemente grandes ($n \to \infty$).*
+  > * *Si $R > C$: Es matemáticamente imposible transmitir sin error; la información se pierde de forma irrecuperable.»*
+
+#### A. La paradoja histórica (¿Por qué la intuición previa decía lo contrario?)
+Antes del paper de Shannon de 1948, los ingenieros de telecomunicaciones creían que era imposible transmitir rápido y sin error a través de un canal ruidoso:
+* La técnica de la época protegía **bit a bit de forma unidimensional** mediante repetición (mandar `000` en vez de `0` y votar por mayoría).
+* Para que la probabilidad de error bajara a cero con repetición, se requerían infinitas repeticiones, lo que hacía que la tasa útil de transmisión se desplomara a cero: $R = \frac{1}{\infty} \to 0$.
+* Se asumía como ley natural que *«cero error requería velocidad cero»*.
+
+#### B. La solución de Shannon: Bloques de $n$ símbolos y Geometría en Altas Dimensiones
+Shannon demostró que no hace falta bajar la velocidad: **podemos mantener la tasa $R$ altísima (pegada a $C$) y aun así hacer $P_E \to 0$**. Esto es posible gracias a dos fenómenos:
+
+1. **La Ley de los Grandes Números (El ruido se vuelve predecible):**
+   * En $1$ solo bit, el canal es una ruleta: o pasa bien o se invierte con probabilidad $p$.
+   * Pero en un bloque grande de $n = 1000$ bits, el ruido se estabiliza alrededor de su media: sabemos casi con $100\%$ de certeza que se corromperán aproximadamente $n \cdot p$ bits (ej: $100$ bits si $p=0.10$). El ruido deja de ser caótico.
+
+2. **La analogía del Océano y las Islas (Esferas de Hamming disjuntas):**
+   * **El océano (Espacio total):** La cantidad de secuencias binarias posibles de longitud $n$ crece exponencialmente como $2^n$.
+   * **Las islas (Palabras código):** Si transmitimos a una tasa $R < C$, solo elegimos $M = 2^{n \cdot R}$ secuencias como palabras válidas.
+   * **El espacio está casi vacío:** Como $R < C \le 1$, la proporción de palabras válidas respecto al total es $\frac{2^{n R}}{2^n} = 2^{-n(1-R)} \to 0$. Para $n$ grande, el hipercubo binario está **casi completamente desierto**.
+   * **Esferas que no se tocan:** Al haber tanto espacio libre, ubicamos las palabras código lejísimos entre sí (gran distancia de Hamming). Cada palabra válida queda rodeada por una "esfera de incertidumbre" de radio $n \cdot p$ (los errores causados por el canal).
+   * **Como las islas están tan separadas, las esferas de ruido NO SE TOCAN (son disjuntas).**
+   * Cuando el canal introduce sus errores, la palabra recibida sigue cayendo dentro de la esfera de la palabra original. El receptor busca la isla más cercana (mínima distancia) y decodifica la palabra original **con probabilidad de error tendiendo a cero ($P_E \to 0$)**.
+
+```text
+       Espacio Hiperdimensional de Bloques Grandes (n -> ∞)
+    ┌─────────────────────────────────────────────────────────────┐
+    │                                                             │
+    │        ╭───────────╮                     ╭───────────╮      │
+    │       ╭╯           ╰╮                   ╭╯           ╰╮     │
+    │      │   [Palabra   │                  │   [Palabra   │     │
+    │      │    Código    │                  │    Código    │     │
+    │      │      A]      │                  │      B]      │     │
+    │       ╰╮           ╭╯                   ╰╮           ╭╯     │
+    │        ╰───────────╯                     ╰───────────╯      │
+    │       Esfera de ruido                   Esfera de ruido     │
+    │     (Radio = n * p)                   (Radio = n * p)       │
+    │   Los errores caen adentro           ¡Completamente         │
+    │   pero no salen de la esfera          disjuntas!            │
+    └─────────────────────────────────────────────────────────────┘
+```
+
+#### C. Aclaración de nomenclatura para no confundir en el parcial:
+* **$P_E$ (o $P(E)$):** Probabilidad de Error del canal (número entre $0$ y $1$, calculado con `prob_error_canal`).
+* **$R$ en Unidad 4:** Redundancia del código ($R = 1 - \eta$, fracción de bits sobrantes).
+* **$R$ en el Teorema de Shannon:** Tasa de Transmisión (*Rate*, velocidad de bits útiles que genera la fuente, acotada por $R \le C$).
+* **$C$:** Capacidad del canal (máxima tasa de transmisión confiable libre de error).
+
+---
+
+### 14. Límites Máximos y Mínimos, Supuestos y Criterios de Evaluación
+*(¿Cómo saber si un valor obtenido es alto o bajo en el examen?)*
+
+#### A. Tabla Maestra de Cotas y Comportamiento Extremo
+
+| Métrica | Rango Teórico | Valor Mínimo ($0$) | Valor Máximo | ¿Cuándo se da el máximo? |
+| :--- | :---: | :--- | :--- | :--- |
+| **Entropía a priori $H(A)$** | $[0, \; \log_2 r]$ | Certeza absoluta (un símbolo con prob $1$). | $\log_2(r)$ | **Equiprobabilidad de entrada** ($P = 1/r$). |
+| **Entropía de salida $H(B)$** | $[0, \; \log_2 s]$ | Certeza total en el receptor. | $\log_2(s)$ | **Equiprobabilidad de salida** ($P(y) = 1/s$). |
+| **Ruido $H(A/B)$** | $[0, \; H(A)]$ | **Canal Sin Ruido** (cada salida proviene de una sola entrada). | $H(A)$ | **Independencia estadística total** (canal inútil, ruido $100\%$). |
+| **Pérdida $H(B/A)$** | $[0, \; H(B)]$ | **Canal Determinante** (cada entrada da una salida fija predecible). | $H(B)$ | **Independencia estadística total** (dispersión máxima hacia adelante). |
+| **Entropía Afín $H(A, B)$** | $[\max(H_A, H_B), \; H_A + H_B]$ | Canal identidad o determinante/sin ruido ($H_{A,B} = H_A = H_B$). | $H(A) + H(B)$ | **Independencia estadística** (las incertidumbres no se solapan, se suman). |
+| **Información Mutua $I(A, B)$** | $[0, \; \min(H_A, H_B)]$ | **Independencia** ($I = 0$, el receptor no se entera de nada). | $\min(H(A), H(B))$ | Canal sin ruido ($I = H_A$) o determinante ($I = H_B$). |
+| **Capacidad $C$** | $[0, \; \min(\log_2 r, \log_2 s)]$ | Canal independiente ($C = 0$). | $\min(\log_2 r, \log_2 s)$ | Canal ideal sin ruido ni pérdida ($r = s$). |
+
+*(Donde $r = |A|$ es la cantidad de entradas y $s = |B|$ es la cantidad de salidas).*
+
+---
+
+#### B. ¿Cómo saber si el resultado obtenido es "alto" o "bajo"?
+
+En los exámenes parciales no alcanza con dar el número; muchas veces te piden: *«Interpretar el resultado obtenido»* o *«¿Es un canal ruidoso?»*. Para responder con solvencia:
+
+1. **Para saber si la Entropía a priori $H(A)$ es alta o baja:**
+   * Comparala contra su techo $\log_2(r)$:
+     $$\text{Rendimiento de fuente} = \frac{H(A)}{\log_2(r)}$$
+   * Si está arriba del $90\%$ (ej: en binario, $H(A) = 0.98$ sobre $\log_2(2) = 1.0$), es **muy alta** $\implies$ la fuente emite símbolos casi con la misma frecuencia (máxima incertidumbre).
+   * Si está por debajo del $50\%$ (ej: $H(A) = 0.35$), es **baja** $\implies$ un símbolo monopoliza la emisión (la fuente es muy predecible).
+
+2. **Para saber si el Ruido $H(A/B)$ es alto o bajo:**
+   * **Nunca lo mires aislado: comparalo siempre contra $H(A)$:**
+     $$\% \text{ Ruido} = \frac{H(A/B)}{H(A)}$$
+   * Si $\frac{H(A/B)}{H(A)} < 0.20$ ($< 20\%$): El ruido es **bajo** (canal bastante limpio).
+   * Si $\frac{H(A/B)}{H(A)} > 0.50$ ($> 50\%$): El ruido es **muy alto** (más de la mitad de la información emitida se pierde por interferencia).
+   * *Ejemplo del examen 2025:* Con $H(A) = 0.9972$ y $H(A/B) = 0.7158$, el ruido es del **$71.8\%$** de la entrada $\implies$ **ruido severo/alto**.
+
+3. **Para saber si la Pérdida $H(B/A)$ es alta o baja:**
+   * Comparala contra la salida $H(B)$:
+     $$\% \text{ Pérdida} = \frac{H(B/A)}{H(B)}$$
+   * Si $H(B/A) \approx 0$, no hay dispersión. Si $H(B/A) \approx H(B)$, la entrada no controla la salida.
+
+4. **Para saber si la Entropía Afín $H(A, B)$ es alta o baja:**
+   * Comparala contra la suma $H(A) + H(B)$:
+     * Si $H(A, B) \approx H(A) + H(B)$ $\implies$ **es muy alta**, lo que significa que el canal apenas correlaciona la entrada con la salida ($I \approx 0$).
+     * Si $H(A, B) \ll H(A) + H(B)$ $\implies$ hay una fuerte "área compartida" entre entrada y salida (mucha información mutua transmitida).
+
+5. **Para saber si la Información Mutua $I(A, B)$ es alta o baja:**
+   * Evaluá la eficiencia de transmisión respecto a la fuente:
+     $$\text{Eficiencia del enlace} = \frac{I(A, B)}{H(A)}$$
+   * Si $I(A, B) / H(A) \approx 1$ ($100\%$): Transmisión ideal sin pérdidas.
+   * Si $I(A, B) / H(A) \approx 0.28$ ($28\%$, como en el parcial 2025): Enlace deficiente, solo el $28\%$ de la información útil llega al receptor.
+
+---
+
+#### C. Supuestos teóricos de los que partimos
+Todos estos cálculos en la materia asumen tres hipótesis fundamentales de Shannon:
+1. **Canal Discreto:** Alfabetos de entrada y salida formados por un número finito de símbolos aislados ($r$ y $s$).
+2. **Canal Sin Memoria (DMC - Discrete Memoryless Channel):** Cada símbolo transmitido solo depende del símbolo actual de entrada, no de los símbolos pasados ni futuros ($P(y_k \mid x_k, x_{k-1}\dots) = P(y_k \mid x_k)$).
+3. **Estacionariedad:** Las probabilidades de transición de la matriz del canal $P(Y \mid X)$ se mantienen constantes en el tiempo (el medio físico no cambia durante la transmisión).
+
+
+
+---
+
 # Resumen de Fórmulas y Relaciones Clave para el Parcial
 
 ```text
