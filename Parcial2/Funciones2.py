@@ -292,6 +292,32 @@ def extraer_caracter(b: int, tipo_paridad: str = "par") -> str | None:
         return chr(b >> 1)
     return None
 
+
+def bits_a_bytearray(cadena_bits: str) -> bytearray:
+    """
+    Función auxiliar: Convierte una cadena de bits binarios (ej. '1010000010101110...'
+    o '10100000 10101110...' con espacios o saltos de línea) en un bytearray agrupando de a 8 bits.
+    """
+    limpia = cadena_bits.replace(" ", "").replace("\n", "").replace("\t", "").strip()
+    if len(limpia) == 0:
+        return bytearray()
+    if len(limpia) % 8 != 0:
+        raise ValueError(f"La longitud de la cadena de bits ({len(limpia)}) debe ser múltiplo de 8.")
+    return bytearray([int(limpia[i : i + 8], 2) for i in range(0, len(limpia), 8)])
+
+
+def cadena_a_bytearray(cadena: str) -> bytearray:
+    """
+    Función auxiliar universal: Convierte una cadena a bytearray.
+    - Si es una secuencia de bits binarios ('0', '1', espacios), agrupa de a 8 bits.
+    - Si es texto estándar (ej. 'HOLA'), lo convierte a sus bytes correspondientes.
+    """
+    limpia = cadena.replace(" ", "").replace("\n", "").replace("\t", "").strip()
+    if limpia and all(c in "01" for c in limpia) and len(limpia) % 8 == 0:
+        return bits_a_bytearray(limpia)
+    return bytearray(cadena, "latin-1")
+
+
 def codificar_mensaje(cadena: str) -> bytearray:
     """
     a. Genera una secuencia de bytes (bytearray) que contiene:
@@ -330,13 +356,17 @@ def codificar_mensaje(cadena: str) -> bytearray:
     return resultado
 
 
-def decodificar_mensaje(datos: bytearray) -> str:
+def decodificar_mensaje(datos: bytearray | str) -> str:
     """
     b. Dada la secuencia de bytes con paridad vertical, longitudinal y cruzada:
        - Si no hay errores, devuelve el mensaje original.
        - Si hay un error simple (1 bit), lo detecta, lo corrige y devuelve el mensaje.
        - Si hay errores no corregibles, devuelve una cadena vacía "".
+       (Acepta tanto un bytearray como una cadena de texto con bits '0100...').
     """
+    if isinstance(datos, str):
+        datos = bits_a_bytearray(datos)
+
     if not datos or len(datos) < 2:
         return ""
 
@@ -1050,3 +1080,12 @@ def prob_error_canal(probs_a_priori: list[float], canal: list[list[float]], cond
     # Probabilidad de error total: P(E) = 1 - P(acierto)
     prob_error = 1.0 - p_acierto_total
     return round(prob_error, 4)
+
+
+# ===========================================================================
+# ALIASES DE COMPATIBILIDAD (Para soportar diferentes enunciados de TP y parcial)
+# ===========================================================================
+calcular_probabilidad_salida = probabilidad_salida
+distribucion_salida = probabilidad_salida
+calcular_probabilidad_a_posteriori = probabilidad_a_posteriori
+calcular_probabilidad_conjunta = probabilidad_conjunta
