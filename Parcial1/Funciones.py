@@ -45,13 +45,13 @@ def entropia(probabilidades : list, r=2) -> float:
     return sum(prob * informacion(prob,r) for prob in probabilidades if prob > 0 and prob <= 1)
 
 # Unidad 2: ejercicio 2
-def alfabeto_y_probabilidades(cadena):
+def alfabetoProbabilidades(cadena):
     # Devuelve el alfabeto y las probabilidades de los simbolos, ordenados de manera ascendente.
     alfabeto = sorted(set(cadena))
     probabilidades = [cadena.count(simbolo)/len(cadena) for simbolo in alfabeto]
     return alfabeto, probabilidades
 
-def generacion_cadena(N, alfabeto, probabilidades) -> str:
+def generacionCadena(N, alfabeto, probabilidades) -> str:
     probabilidades_acumuladas = [sum(probabilidades[:i+1]) for i in range(len(probabilidades))]
     cadena = ""
     for _ in range(N):
@@ -64,7 +64,7 @@ def generacion_cadena(N, alfabeto, probabilidades) -> str:
     return cadena
 
 # Unidad 2: ejercicio 8
-def entropia_fuente_binaria(prob, r = 2):
+def entropiaFuenteBinaria(prob, r = 2):
     """
     Recibe el parámetro p (probabilidad de uno de los símbolos) de una fuente binaria
     de memoria nula y, utilizando la función entropia_fuente del ejercicio 1, calcula su entropía.
@@ -293,7 +293,7 @@ def alfabeto_codigo(codigo) -> str:
     return "".join(sorted(set("".join(codigo))))
 
 # b
-def longitudes_palabras(codigo) -> list:
+def longitudesPalabras(codigo) -> list:
     """Devuelve la longitud de cada palabra código."""
     return [len(palabra) for palabra in codigo]
 
@@ -311,7 +311,7 @@ def Kraft(codigo) -> float:
 # Unidad 3: ejercicio 11
 # a (entropia a partir de probabilidades)
 # b
-def longmedia(codigo, probabilidades) -> float:
+def longMedia(codigo, probabilidades) -> float:
     """Calcula la longitud media del código."""
     return sum(probabilidad * len(palabra)
                for palabra, probabilidad in zip(codigo, probabilidades))
